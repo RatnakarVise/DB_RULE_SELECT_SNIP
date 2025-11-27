@@ -1,0 +1,12 @@
+[
+  {
+    "pgm_name": "ZSELECTSTAR_TEST",
+    "inc_name": "ZSELECTSTAR_TEST",
+    "type": "PROG",
+    "name": "MAIN",
+    "class_implementation": "",
+    "start_line": 120,
+    "end_line": 200,
+    "code": "DATA: lv_bukrs TYPE bukrs,\n      lv_belnr TYPE belnr_d,\n      lt_bkpf TYPE TABLE OF bkpf.\n\nSELECT \n* FROM bkpf \nINTO TABLE lt_bkpf WHERE bukrs = '1000'.\n\nLOOP AT lt_bkpf INTO DATA(ls_bkpf).\n  WRITE: / ls_bkpf-bukrs, ls_bkpf-belnr.\nENDLOOP."
+  }
+]

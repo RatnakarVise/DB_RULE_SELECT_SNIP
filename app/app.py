@@ -218,6 +218,24 @@ def get_line_number(text: str, pos: int) -> int:
     return text.count("\n", 0, pos) + 1
 
 
+def get_line_snippet(text: str, start: int, end: int) -> str:
+    """
+    Multi-line logical snippet: full line(s) containing the SELECT* statement.
+    Similar style to your MATNR/ORDERBY scanners.
+    """
+    line_start = text.rfind("\n", 0, start)
+    if line_start == -1:
+        line_start = 0
+    else:
+        line_start += 1
+
+    line_end = text.find("\n", end)
+    if line_end == -1:
+        line_end = len(text)
+
+    return text[line_start:line_end]
+
+
 def build_response(
     unit: Unit,
     src: str,
@@ -229,13 +247,26 @@ def build_response(
       - top-level pgm/inc/type/name/code/remediated_code
       - findings[] in Credit-style structure
       - keep all logical metadata (used_fields, suggested_statement, etc.)
+      - severity always 'error'
+      - starting_line/ending_line are absolute (unit.start_line-based)
+      - snippet is multi-line snippet around the SELECT* (not just raw text)
     """
     findings = []
 
     for sel in select_meta:
         start = sel["span"][0]
         end = sel["span"][1]
-        line_start = get_line_number(src, start)
+
+        # Relative line number inside this unit's code
+        rel_line = get_line_number(src, start)
+        # First line of this block is unit.start_line (per your choice A)
+        base = (unit.start_line or 1) - 1
+        starting_line_abs = base + rel_line
+
+        # Multi-line snippet
+        snippet = get_line_snippet(src, start, end)
+        snippet_line_count = snippet.count("\n") + 1
+        ending_line_abs = starting_line_abs + snippet_line_count
 
         target_desc = f"{sel['target_type']} {sel['target_name']}" if sel["target_name"] else sel["target_type"]
 
@@ -253,13 +284,13 @@ def build_response(
             "incl_name": unit.inc_name,
             "types": unit.type,
             "blockname": unit.name,
-            "starting_line": line_start,
-            "ending_line": line_start,
+            "starting_line": starting_line_abs,
+            "ending_line": ending_line_abs,
             "issues_type": "SelectStar",
-            "severity": "warning",
+            "severity": "error",  # always error now
             "message": message,
             "suggestion": suggestion,
-            "snippet": sel["text"],
+            "snippet": snippet.replace("\n", "\\n"),
             # extra metadata so you don't lose any logic/data:
             "table": sel["table"],
             "target_type": sel["target_type"],
